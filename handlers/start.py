@@ -12,4 +12,4 @@ async def start_command_handler(message: Message):
 
 @router.message(Command("help"))
 async def help_command_handler(message: Message):
-    await message.answer("There is no help yet")
+    await message.answer("Send me location send me location then i will help you")
