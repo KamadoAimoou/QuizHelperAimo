@@ -1,30 +1,10 @@
-import re
-import os
 
-def parse_file(file_path: str) -> list[dict]:
-    """
-    Основная функция, которую вызывает хэндлер.
-    Она открывает файл по пути, читает текст и передает его в парсер.
-    """
-    if not os.path.exists(file_path):
-        return []
-        
-    with open(file_path, "r", encoding="utf-8") as f:
-        text = f.read()
-        
-    return parse_txt(text)
+import re
 
 
 def parse_txt(text: str) -> list[dict]:
-    """
-    Парсит текст и возвращает список вопросов.
-    Формат каждого вопроса:
-    {"text": "Вопрос?", "options": ["A) ...", "B) ..."], "correct": 1}
-    """
     questions = []
-    
     blocks = re.split(r'\n\s*\n', text.strip())
-
     for block in blocks:
         block = block.strip()
         if not block:
@@ -32,12 +12,13 @@ def parse_txt(text: str) -> list[dict]:
         parsed = _parse_block(block)
         if parsed:
             questions.append(parsed)
-
     return questions
 
 
 def _parse_block(block: str) -> dict | None:
     lines = [l.strip() for l in block.split('\n') if l.strip()]
+    print(f"БЛОК: {lines}")
+
     if len(lines) < 3:
         return None
 
@@ -49,17 +30,25 @@ def _parse_block(block: str) -> dict | None:
     correct_index = None
 
     for line in lines[1:]:
-        
+        # Вариант 1: OTBeT (OCR путает буквы)
         answer_match = re.match(
-            r'^(ответ|answer|правильный)[:\s]+([A-Da-dА-Га-г1-4])',
+            r'^[OoОо][TtТт][BbВв][eeеЕ][TtТт][:\s\|]+([A-Da-dА-ДCcСс1-4])',
             line, re.IGNORECASE
         )
         if answer_match:
-            correct_letter = answer_match.group(2).upper()
-            correct_index = _letter_to_index(correct_letter)
+            correct_index = _letter_to_index(answer_match.group(1))
             continue
 
-        # Ищем варианты ответов A) B) C) D) или 1) 2) 3) 4)
+        # Вариант 2: Ответ / Answer
+        answer_match2 = re.match(
+            r'^(ответ|answer)[:\s\|]+([A-Da-dА-ДCcСс1-4])',
+            line, re.IGNORECASE
+        )
+        if answer_match2:
+            correct_index = _letter_to_index(answer_match2.group(2))
+            continue
+
+        # Варианты ответов A) B) C) D)
         if re.match(r'^[A-Da-dА-Га-г1-4][).]\s*.+', line):
             options.append(line)
 
@@ -70,8 +59,10 @@ def _parse_block(block: str) -> dict | None:
 
 
 def _letter_to_index(letter: str) -> int | None:
-    mapping = {'A': 0, 'А': 0, '1': 0,
-               'B': 1, 'Б': 1, '2': 1,
-               'C': 2, 'В': 2, '3': 2,
-               'D': 3, 'Г': 3, '4': 3}
-    return mapping.get(letter.upper())
+    mapping = {
+        'A': 0, 'А': 0, 'a': 0, 'а': 0, '1': 0,
+        'B': 1, 'В': 1, 'b': 1, 'в': 1, '2': 1,
+        'C': 2, 'С': 2, 'c': 2, 'с': 2, '3': 2,
+        'D': 3, 'Д': 3, 'd': 3, 'д': 3, '4': 3,
+    }
+    return mapping.get(letter.strip())
