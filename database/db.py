@@ -107,6 +107,13 @@ async def get_question(quiz_id: int, index: int) -> dict | None:
         return d
 
 
+async def get_question_by_id(question_id: int) -> dict | None:
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT * FROM questions WHERE id=$1", question_id)
+        return dict(row) if row else None
+
+
 async def get_all_questions(quiz_id: int) -> list:
     pool = await get_pool()
     async with pool.acquire() as conn:
